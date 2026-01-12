@@ -7,6 +7,10 @@ export function validateProjectPayload(body) {
 
   const config = body?.config
   if (config && typeof config === 'object') {
+    if (config.mode !== undefined && config.mode !== 'audit' && config.mode !== 'self_check') {
+      errors.push('config.mode must be audit|self_check if provided')
+    }
+
     const requiredFiles = Number(config.requiredFiles)
     const maxFiles = Number(config.maxFiles)
     if (!Number.isInteger(requiredFiles) || requiredFiles < 1) errors.push('config.requiredFiles must be an integer >= 1')

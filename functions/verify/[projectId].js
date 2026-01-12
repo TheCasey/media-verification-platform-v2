@@ -21,6 +21,7 @@ export async function onRequestPost(context) {
 
   if (!env.DB) return json({ error: 'Database not configured' }, { status: 500 })
 
+  // Overall payload cap (safety): prevents unexpectedly large metadata payloads.
   const tooLarge = rejectIfTooLarge(request, { maxBytes: 256 * 1024 })
   if (tooLarge) return tooLarge
 
@@ -37,6 +38,13 @@ export async function onRequestPost(context) {
     config = JSON.parse(projectRow.config)
   } catch {
     config = {}
+  }
+
+  if ((config.mode || 'audit') === 'self_check') {
+    return json(
+      { error: 'This project is self-check only; submissions are not stored.' },
+      { status: 403 },
+    )
   }
 
   const body = await request.json().catch(() => null)
@@ -71,6 +79,10 @@ export async function onRequestPost(context) {
     return json({ error: `Maximum ${maxFiles} files allowed` }, { status: 400 })
   }
 
+  // Per-file metadata cap (safety). This is in addition to the overall payload cap above.
+  // If you later store a richer EXIF/debug payload, keep this limit bounded to avoid D1 bloat.
+  const MAX_METADATA_BYTES_PER_FILE = 64 * 1024
+
   for (const f of files) {
     if (!f || typeof f !== 'object') return json({ error: 'Invalid file entry' }, { status: 400 })
     if (typeof f.filename !== 'string' || !f.filename) return json({ error: 'File filename is required' }, { status: 400 })
@@ -86,6 +98,22 @@ export async function onRequestPost(context) {
     }
     if (typeof f.validation !== 'object' || f.validation === null) {
       return json({ error: 'File validation must be an object' }, { status: 400 })
+    }
+
+    // Best-effort size check (UTF-8 size approx via TextEncoder).
+    // If this trips, reduce captured EXIF/debug fields (e.g., strip MakerNotes/thumbnails/large blobs).
+    try {
+      const bytes = new TextEncoder().encode(JSON.stringify(f.metadata)).byteLength
+      if (bytes > MAX_METADATA_BYTES_PER_FILE) {
+        return json(
+          {
+            error: `File metadata too large (${bytes} bytes). Reduce captured EXIF/debug fields and try again.`,
+          },
+          { status: 413 },
+        )
+      }
+    } catch {
+      return json({ error: 'File metadata is not serializable JSON' }, { status: 400 })
     }
   }
 

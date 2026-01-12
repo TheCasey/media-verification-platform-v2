@@ -27,6 +27,8 @@ export default function FileUploader({
         onChange={(e) => {
           if (!e.target.files) return
           onFilesSelected(e.target.files)
+          // allow selecting the same file again later
+          e.target.value = ''
         }}
       />
     </div>

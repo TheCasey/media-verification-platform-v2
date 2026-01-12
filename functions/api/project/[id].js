@@ -26,6 +26,7 @@ export async function onRequestGet(context) {
     {
       id: row.id,
       name: row.name,
+      mode: config.mode || 'audit',
       requiredFiles: config.requiredFiles,
       maxFiles: config.maxFiles,
       allowedFileTypes: config.allowedFileTypes,

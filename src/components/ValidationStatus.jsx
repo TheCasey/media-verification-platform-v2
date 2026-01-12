@@ -1,4 +1,4 @@
-export default function ValidationStatus({ label, status, description }) {
+export default function ValidationStatus({ label, status, description, details }) {
   const pill =
     status === 'pass'
       ? 'bg-green-100 text-green-800 border-green-200'
@@ -11,6 +11,7 @@ export default function ValidationStatus({ label, status, description }) {
       <div>
         <div className="text-sm font-medium text-slate-900">{label}</div>
         {description ? <div className="text-xs text-slate-500 mt-1">{description}</div> : null}
+        {details ? <div className="text-xs text-slate-600 mt-1">{details}</div> : null}
       </div>
       <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${pill}`}>
         {status === 'pass' ? 'Pass' : status === 'soft_fail' ? 'Soft fail' : 'Fail'}

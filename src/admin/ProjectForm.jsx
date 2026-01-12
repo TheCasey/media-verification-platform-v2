@@ -3,15 +3,81 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { createProject, getProject, updateProject } from '../services/api.js'
 
 const defaultConfig = {
+  mode: 'audit',
   requiredFiles: 3,
   maxFiles: 5,
   allowedFileTypes: ['image/jpeg', 'image/png', 'image/heic', 'video/mp4'],
+  capturePolicy: {
+    // When you later choose to capture richer EXIF, exclude serial numbers by default.
+    // (We can refine this list as you test real files.)
+    excludeExifTags: ['BodySerialNumber', 'CameraSerialNumber', 'SerialNumber', 'LensSerialNumber'],
+  },
+  adminDisplay: {
+    fileFields: [
+      { label: 'GPS (lat)', path: 'metadata.gps.lat' },
+      { label: 'GPS (lng)', path: 'metadata.gps.lng' },
+      { label: 'Timestamp', path: 'metadata.timestamp' },
+      { label: 'Resolution (w)', path: 'metadata.resolution.width' },
+      { label: 'Resolution (h)', path: 'metadata.resolution.height' },
+      { label: 'Orientation', path: 'metadata.orientation' },
+    ],
+  },
   metadataRequirements: {
     gps: { required: true, failureMode: 'hard', description: 'GPS metadata must be present and readable' },
     timestamp: { required: true, failureMode: 'soft', description: 'Timestamp should be present' },
   },
   instructions: { ios: '', android: '', desktop: '' },
   emailRecipient: '',
+}
+
+function getModeFromConfigText(configText) {
+  try {
+    const cfg = JSON.parse(configText)
+    return cfg?.mode === 'self_check' ? 'self_check' : 'audit'
+  } catch {
+    return 'audit'
+  }
+}
+
+function setModeInConfigText(configText, nextMode) {
+  try {
+    const cfg = JSON.parse(configText)
+    const updated = { ...(cfg || {}), mode: nextMode }
+    return JSON.stringify(updated, null, 2)
+  } catch {
+    // If JSON is invalid, don't mutate the text (avoid making it worse)
+    return configText
+  }
+}
+
+function getAdminDisplayFields(configText) {
+  try {
+    const cfg = JSON.parse(configText)
+    const fields = cfg?.adminDisplay?.fileFields
+    if (!Array.isArray(fields)) return []
+    return fields
+      .filter((f) => f && typeof f === 'object')
+      .map((f) => ({ label: String(f.label || ''), path: String(f.path || '') }))
+      .filter((f) => f.label || f.path)
+  } catch {
+    return []
+  }
+}
+
+function setAdminDisplayFields(configText, nextFields) {
+  try {
+    const cfg = JSON.parse(configText)
+    const updated = {
+      ...(cfg || {}),
+      adminDisplay: {
+        ...((cfg || {}).adminDisplay || {}),
+        fileFields: nextFields,
+      },
+    }
+    return JSON.stringify(updated, null, 2)
+  } catch {
+    return configText
+  }
 }
 
 export default function ProjectForm() {
@@ -95,10 +161,90 @@ export default function ProjectForm() {
               />
             </label>
 
+            <label className="block">
+              <span className="text-sm font-medium text-slate-700">Mode</span>
+              <select
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+                value={getModeFromConfigText(configText)}
+                onChange={(e) => setConfigText(setModeInConfigText(configText, e.target.value))}
+              >
+                <option value="audit">Audit (store submissions)</option>
+                <option value="self_check">Self-check (no storage)</option>
+              </select>
+              <div className="mt-1 text-xs text-slate-500">
+                Self-check projects hide identity fields and never store submissions; users can only validate locally.
+              </div>
+            </label>
+
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
               Active
             </label>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">Admin display fields (per file)</div>
+              <div className="text-xs text-slate-500">
+                Choose which metadata fields show up when reviewing submissions. These paths read from stored
+                submission file objects (e.g. <code className="font-mono">metadata.timestamp</code>).
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {getAdminDisplayFields(configText).map((field, idx, arr) => (
+                <div key={`${field.label}-${idx}`} className="grid gap-2 md:grid-cols-5 items-end">
+                  <label className="block md:col-span-2">
+                    <span className="text-xs font-medium text-slate-600">Label</span>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                      value={field.label}
+                      onChange={(e) => {
+                        const next = [...arr]
+                        next[idx] = { ...next[idx], label: e.target.value }
+                        setConfigText(setAdminDisplayFields(configText, next))
+                      }}
+                    />
+                  </label>
+                  <label className="block md:col-span-2">
+                    <span className="text-xs font-medium text-slate-600">Path</span>
+                    <input
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono"
+                      value={field.path}
+                      onChange={(e) => {
+                        const next = [...arr]
+                        next[idx] = { ...next[idx], path: e.target.value }
+                        setConfigText(setAdminDisplayFields(configText, next))
+                      }}
+                      placeholder="metadata.gps.lat"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-red-300 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-50"
+                    onClick={() => {
+                      const next = [...arr]
+                      next.splice(idx, 1)
+                      setConfigText(setAdminDisplayFields(configText, next))
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              onClick={() => {
+                const current = getAdminDisplayFields(configText)
+                const next = [...current, { label: '', path: '' }]
+                setConfigText(setAdminDisplayFields(configText, next))
+              }}
+            >
+              Add field
+            </button>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-5">

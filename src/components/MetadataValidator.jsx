@@ -1,6 +1,6 @@
 import ValidationStatus from './ValidationStatus.jsx'
 
-export default function MetadataValidator({ requirements, fileMetadata, validationResults }) {
+export default function MetadataValidator({ requirements, fileMetadata, validationResults, showMetadataJson = true }) {
   const reqs = requirements || {}
   const perRule = validationResults?.perRule || {}
 
@@ -14,16 +14,19 @@ export default function MetadataValidator({ requirements, fileMetadata, validati
             label={key}
             status={result.status}
             description={rule?.description}
+            details={result.message}
           />
         )
       })}
 
-      <details className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <summary className="cursor-pointer text-xs font-medium text-slate-700">Metadata (normalized)</summary>
-        <pre className="mt-2 overflow-auto text-xs text-slate-800">
-          {JSON.stringify(fileMetadata?.normalized || fileMetadata || {}, null, 2)}
-        </pre>
-      </details>
+      {showMetadataJson ? (
+        <details className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <summary className="cursor-pointer text-xs font-medium text-slate-700">Metadata (normalized)</summary>
+          <pre className="mt-2 overflow-auto text-xs text-slate-800">
+            {JSON.stringify(fileMetadata?.normalized || fileMetadata || {}, null, 2)}
+          </pre>
+        </details>
+      ) : null}
     </div>
   )
 }

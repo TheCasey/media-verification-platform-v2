@@ -20,6 +20,7 @@ export async function extractImageExif(file) {
       'Make',
       'Model',
       'Software',
+      'Orientation',
       'DateTimeOriginal',
       'CreateDate',
       'ModifyDate',
@@ -37,8 +38,22 @@ export async function extractImageExif(file) {
   const lat = safeNumber(raw?.latitude ?? raw?.GPSLatitude)
   const lng = safeNumber(raw?.longitude ?? raw?.GPSLongitude)
 
-  const width = safeNumber(raw?.ImageWidth ?? raw?.PixelXDimension)
-  const height = safeNumber(raw?.ImageHeight ?? raw?.PixelYDimension)
+  const rawWidth = safeNumber(raw?.ImageWidth ?? raw?.PixelXDimension)
+  const rawHeight = safeNumber(raw?.ImageHeight ?? raw?.PixelYDimension)
+  const orientation = safeNumber(raw?.Orientation)
+
+  // Many phones store pixels in one orientation and rely on EXIF Orientation for display.
+  const swapsAxes = orientation === 6 || orientation === 8
+  const width = rawWidth !== null && rawHeight !== null ? (swapsAxes ? rawHeight : rawWidth) : null
+  const height = rawWidth !== null && rawHeight !== null ? (swapsAxes ? rawWidth : rawHeight) : null
+  const orientationLabel =
+    width !== null && height !== null
+      ? height > width
+        ? 'portrait'
+        : width > height
+          ? 'landscape'
+          : 'square'
+      : null
 
   return {
     normalized: {
@@ -46,6 +61,8 @@ export async function extractImageExif(file) {
       gps: lat !== null && lng !== null ? { lat, lng } : null,
       timestamp: pickTimestamp(raw),
       resolution: width !== null && height !== null ? { width, height } : null,
+      exifOrientation: orientation ?? null,
+      orientation: orientationLabel,
       camera: {
         make: raw?.Make || null,
         model: raw?.Model || null,

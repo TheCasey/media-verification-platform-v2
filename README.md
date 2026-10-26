@@ -46,24 +46,19 @@ npx wrangler d1 execute media-verification-platform-v2-db --file=./schema.sql
 Then update `wrangler.toml` with your `database_id`.
 
 ## Environment variables (Cloudflare Pages)
-- `ADMIN_PASSWORD` (required for MVP login; recommended to migrate to hash + signed sessions)
-- `ADMIN_PASSWORD_HASH` (recommended; if present can be used instead of plaintext)
-- `SESSION_SECRET` (recommended; used to sign admin sessions)
+- `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` (one is required; the hash takes precedence when set)
+- `SESSION_SECRET` (required by the implemented login/session handlers)
 - `RESEND_API_KEY` (optional)
 
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Review and test boundaries
 
-Currently, two official plugins are available:
+This is a prototype, with no automated test script currently configured. Metadata checks are preflight checks and do not prove media authenticity.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Run `npm run lint` and `npm run build` as separate static checks. Manual QA should cover missing EXIF, absent GPS, disallowed MIME types, empty files, file-count limits, rejected submissions, admin authentication, and project isolation. Use synthetic media with fabricated metadata and record expected/actual results.
 
-## React Compiler
+The repository currently tracks local `.wrangler/state/` database files. The ignore rule prevents new untracked state from being added; it does not remove already-tracked files or historical copies. Review local-state cleanup separately before treating the repository as portfolio-ready.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Related repository
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+[The earlier media verification experiment](https://github.com/TheCasey/media-verification-platform) has a separate implementation. This repository's v2 name does not by itself establish production readiness or complete feature parity.

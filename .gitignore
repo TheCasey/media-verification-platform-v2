@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local Cloudflare runtime state and credentials
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
